@@ -95,6 +95,14 @@ public interface Crypt32 extends Library {
                 int dwCertEncodingType,
                 int dwFindFlags,
                 int dwFindType,
+                String pvFindPara,
+                CERT_CONTEXT.ByReference pPrevCertContext
+        );
+        CERT_CONTEXT.ByReference CertFindCertificateInStore(
+                Pointer hCertStore,
+                int dwCertEncodingType,
+                int dwFindFlags,
+                int dwFindType,
                 CRYPT_BIT_BLOB pvFindPara,
                 CERT_CONTEXT.ByReference pPrevCertContext
         );

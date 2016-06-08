@@ -120,6 +120,14 @@ public class UtilsTest {
         Structures.CERT_CONTEXT cert = CertUtils.findCertByHash(testCertHash);
         CertUtils.viewCert(cert, null);
     }
+    @Test
+    public void testFindCertBySubject() throws CertificateException{
+        System.out.println("Find Cert By Subject");
+        Structures.CERT_CONTEXT cert = CertUtils.findCertBySubject("Ivan:ProfessionalQES-1");
+        //assertNotNull(cert);
+        X509Certificate x509Cert = CertUtils.getX509Certificate(cert);
+            System.out.println(x509Cert.getSubjectDN().toString());
+    }
 
 
 }

@@ -5,11 +5,13 @@
  */
 package bobs.dss.mcapisignature;
 
+import static bobs.dss.mcapisignature.Consts.*;
 import bobs.dss.mcapisignature.Structures.*;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.ptr.IntByReference;
+import com.sun.jna.ptr.PointerByReference;
 import java.io.ByteArrayInputStream;
 import java.io.FileOutputStream;
 import java.security.MessageDigest;
@@ -42,6 +44,19 @@ public class CertUtils {
         return data;
     }
 
+    public static CERT_CONTEXT findCertByKeyIdentifier(String KeyIdentifier) {
+        byte[] decoded = hexStringToByteArray(KeyIdentifier);
+        Pointer hStore = Crypt32.INST.CertOpenSystemStoreA(null, "MY");
+        CRYPT_BIT_BLOB pvFindPara = new CRYPT_BIT_BLOB();
+        pvFindPara.pbData = new Memory(decoded.length);
+        pvFindPara.pbData.write(0, decoded, 0, decoded.length);
+        pvFindPara.cbData = decoded.length;
+        CERT_CONTEXT.ByReference cert = Crypt32.INST.CertFindCertificateInStore(hStore, 1, 0, CERT_FIND_KEY_IDENTIFIER, pvFindPara, null);
+        pvFindPara=null;
+        Crypt32.INST.CertCloseStore(hStore, 0);        
+        return cert;
+    }
+
     public static CERT_CONTEXT findCertByHash(String Sha1Hash) {
         byte[] decoded = hexStringToByteArray(Sha1Hash);
         Pointer hStore = Crypt32.INST.CertOpenSystemStoreA(null, "MY");
@@ -49,8 +64,16 @@ public class CertUtils {
         pvFindPara.pbData = new Memory(decoded.length);
         pvFindPara.pbData.write(0, decoded, 0, decoded.length);
         pvFindPara.cbData = decoded.length;
-        CERT_CONTEXT.ByReference cert = Crypt32.INST.CertFindCertificateInStore(hStore, 1, 0, Crypt32.CERT_FIND_HASH, pvFindPara, null);
-        //byte[] certIssuerCertBytes = cert.pbCertEncoded.getByteArray(0, cert.cbCertEncoded);
+        CERT_CONTEXT.ByReference cert = Crypt32.INST.CertFindCertificateInStore(hStore, 1, 0, CERT_FIND_HASH, pvFindPara, null);
+        pvFindPara=null;
+        Crypt32.INST.CertCloseStore(hStore, 0);        
+        return cert;
+    }
+
+    public static CERT_CONTEXT findCertBySubject(String subject) {
+        Pointer hStore = Crypt32.INST.CertOpenSystemStoreA(null, "MY");
+        CERT_CONTEXT.ByReference cert = Crypt32.INST.CertFindCertificateInStore(hStore, 1, 0, CERT_FIND_SUBJECT_STR_A, subject, null);
+        Crypt32.INST.CertCloseStore(hStore, 0);        
         return cert;
     }
 
@@ -89,11 +112,13 @@ public class CertUtils {
         }
         return chain;
     }
-    public static void viewCert(CERT_CONTEXT cert,String title) throws SelectCertificateExceprion{
-        if (!Cryptui.INST.CryptUIDlgViewContext(1, cert, null, title, 0, null)){
+
+    public static void viewCert(CERT_CONTEXT cert, String title) throws SelectCertificateExceprion {
+        if (!Cryptui.INST.CryptUIDlgViewContext(1, cert, null, title, 0, null)) {
             throw new SelectCertificateExceprion("CryptUIDlgViewContext call failed.");
         }
     }
+
     public static CERT_CONTEXT selectCert() throws SelectCertificateExceprion {
         return selectCert(null, null);
     }
@@ -101,9 +126,9 @@ public class CertUtils {
     public static CERT_CONTEXT selectCert(String title, String desc) throws SelectCertificateExceprion {
         Pointer hStore = Crypt32.INST.CertOpenSystemStoreA(null, "MY");
         WinDef.HWND hwnd = null;
-        CERT_CONTEXT.ByReference certCont =Cryptui.INST.CryptUIDlgSelectCertificateFromStore(hStore, hwnd, title, desc, 0, 0, null);
-        if(certCont==null){
-         throw new SelectCertificateExceprion("Select Certificate UI failed.");
+        CERT_CONTEXT.ByReference certCont = Cryptui.INST.CryptUIDlgSelectCertificateFromStore(hStore, hwnd, title, desc, 0, 0, null);
+        if (certCont == null) {
+            throw new SelectCertificateExceprion("Select Certificate UI failed.");
         }
         Crypt32.INST.CertCloseStore(hStore, 0);
         return certCont;
