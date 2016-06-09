@@ -5,6 +5,7 @@
  */
 package bobs.mcapisignature;
 
+import static bobs.mcapisignature.CertUtils.dump;
 import static bobs.mcapisignature.Consts.*;
 import bobs.mcapisignature.Structures.*;
 import com.sun.jna.Memory;
@@ -22,12 +23,12 @@ import org.apache.commons.codec.binary.Base64;
  * @author sbalabanov
  */
 public class Signature {
-
+   
     private CERT_CONTEXT cert = null;
     private PointerByReference provRef = null;
     private IntByReference dwKeySpec = new IntByReference();
     private String signatureAlgorithm = "SHA256withRSA";
-
+    private String certHash=null;
     public Signature() {
 
     }
@@ -81,8 +82,7 @@ public class Signature {
     }
 
     public byte[] sign(byte[] dataToSign) throws MCAPIException {
-
-        setProvaider(cert);
+        
         int keyType = AT_SIGNATURE;
         PointerByReference keyRef = new PointerByReference();
 
@@ -119,11 +119,10 @@ public class Signature {
                 for (int n = 0; n < signLen; n++) {
                     sign[n] = signPtr.getByte(signLen - 1 - n);
                 }
-                //signPtr.read(0, sign, 0, signLen);
-
-                System.out.println("OK Sign length: " + signLen);
+                //signPtr.read(0, sign, 0, signLen);                
+                //System.out.println("OK Sign length: " + signLen);
             } else {
-                System.out.println("CryptSignHash Error " + Integer.toHexString(Native.getLastError()));
+                //System.out.println("CryptSignHash Error " + Integer.toHexString(Native.getLastError()));
                 throw new MCAPIException("CryptSignHash Error");
             }
         } else {
@@ -137,6 +136,9 @@ public class Signature {
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
+        releaseContext();
+    }
+    public void releaseContext(){
         if (cert != null) {
             Crypt32.INST.CertFreeCertificateContext(cert);
         }
@@ -162,8 +164,9 @@ public class Signature {
     /**
      * @param cert the cert to set
      */
-    public void setCert(CERT_CONTEXT cert) {
+    public void setCert(CERT_CONTEXT cert) throws MCAPIException {
         this.cert = cert;
+        setProvaider(cert);
     }
 
     /**
@@ -178,6 +181,16 @@ public class Signature {
      */
     public void setSignatureAlgorithm(String signatureAlgorithm) {
         this.signatureAlgorithm = signatureAlgorithm;
+    }
+
+    /**
+     * @return the certHash
+     */
+    public String getCertHash() {
+        if(certHash==null && cert!=null){
+            certHash=CertUtils.getThumbprint(cert);
+        }
+        return certHash;
     }
 
 }
