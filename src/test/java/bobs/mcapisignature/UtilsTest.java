@@ -6,7 +6,11 @@
 package bobs.mcapisignature;
 
 import static bobs.mcapisignature.CertUtils.dump;
+import static bobs.mcapisignature.CertUtils.hMyStore;
 import static bobs.mcapisignature.SignatureTest.testCertHash;
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+import com.sun.jna.platform.win32.WinDef;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import org.junit.Test;
@@ -152,6 +156,32 @@ public class UtilsTest {
             dump(certCA.getBytes(),"src/test/resources/"+i+".cer");
         }
     }
-    
-
+    @Test
+    public void testOpenMemStore() {
+        System.out.println("OpenMemStore");
+        Pointer store = CertUtils.openMemStore();
+       CertUtils.closeSore(store);
+    }
+    @Test
+    public void testCertAddCertificateContextToStore() throws SelectCertificateExceprion{
+      System.out.println("CertAddCertificateContextToStore");
+       Pointer store = CertUtils.openMemStore();
+       Structures.CERT_CONTEXT cert = CertUtils.findCertBySubject("Ivan");       
+       if(!CertUtils.CertAddCertificateContextToStore(store, cert)){
+           System.out.println("CertAddCertificateContextToStore:"+Integer.toHexString(Native.getLastError()));
+           throw new SelectCertificateExceprion("CertAddCertificateContextToStore:"+Integer.toHexString(Native.getLastError()));
+       }
+       cert = CertUtils.findCertBySubject("Srebrin");
+       if(!CertUtils.CertAddCertificateContextToStore(store, cert)){
+           System.out.println("CertAddCertificateContextToStore:"+Integer.toHexString(Native.getLastError()));
+           throw new SelectCertificateExceprion("CertAddCertificateContextToStore:"+Integer.toHexString(Native.getLastError()));
+       }
+       WinDef.HWND hwnd = User32.INST.GetForegroundWindow();
+       Structures.CERT_CONTEXT.ByReference certCont = Cryptui.INST.CryptUIDlgSelectCertificateFromStore(store, hwnd, null, null, 0, 0, null);
+       System.out.println("getCertList:"+Integer.toHexString(Native.getLastError()));
+       List<String> certs = CertUtils.getCertList(store);
+       System.out.println(certs);
+      //  CertUtils.viewCert(certCont, "test");
+       CertUtils.closeSore(store);
+    }
 }

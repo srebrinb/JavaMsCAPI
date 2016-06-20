@@ -68,16 +68,15 @@ public class Signature {
 
     private int getMCAPISignatureAlgorithm(String signatureAlgorithm) throws MCAPIException {
         int CALG = 0;
-        switch (signatureAlgorithm) {
-            case "SHA256withRSA":
-                CALG = Advapi32.CALG_SHA256;
-                break;
-            case "SHA1withRSA":
-                CALG = Advapi32.CALG_SHA1;
-                break;
-            default:
-                throw new MCAPIException("Unsupported alg " + signatureAlgorithm);
+        if(signatureAlgorithm.equals("SHA256withRSA")){
+            CALG = Advapi32.CALG_SHA256;
+        }else if(signatureAlgorithm.equals("SHA1withRSA")){
+            CALG = Advapi32.CALG_SHA1;
         }
+        else{
+            throw new MCAPIException("Unsupported alg " + signatureAlgorithm);
+        }
+        
         return CALG;
     }
 

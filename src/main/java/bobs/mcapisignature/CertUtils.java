@@ -8,6 +8,7 @@ package bobs.mcapisignature;
 import static bobs.mcapisignature.Consts.*;
 import bobs.mcapisignature.Structures.*;
 import com.sun.jna.Memory;
+import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.ptr.IntByReference;
@@ -19,6 +20,8 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -27,15 +30,28 @@ import org.apache.commons.codec.digest.DigestUtils;
  * @author sbalabanov
  */
 public class CertUtils {
-   static Pointer hMyStore = Crypt32.INST.CertOpenSystemStoreA(null, "MY");
-   @Override
+
+    static Pointer hMyStore = Crypt32.INST.CertOpenSystemStoreA(null, "MY");
+
+    @Override
     protected void finalize() throws Throwable {
         closeMySore();
     }
-    public static void closeMySore(){
-        if (hMyStore!=null)
-            Crypt32.INST.CertCloseStore(hMyStore, 0);  
+
+    public static Pointer openMemStore() {
+        return Crypt32.INST.CertOpenStore("Memory", 0, null, 0, null);
     }
+
+    public static void closeSore(Pointer store) {
+        if (store != null) {
+            Crypt32.INST.CertCloseStore(store, 0);
+        }
+    }
+
+    public static void closeMySore() {
+        closeSore(hMyStore);
+    }
+
     public static byte[] hexStringToByteArray(String s) {
         s = s.replaceAll(" ", "");
         s = s.replaceAll("-", "");
@@ -49,51 +65,65 @@ public class CertUtils {
         }
         return data;
     }
-    
+
     public static CERT_CONTEXT findCertByKeyIdentifier(String KeyIdentifier) {
-        byte[] decoded = hexStringToByteArray(KeyIdentifier);        
+        byte[] decoded = hexStringToByteArray(KeyIdentifier);
         CRYPT_BIT_BLOB pvFindPara = new CRYPT_BIT_BLOB();
         pvFindPara.pbData = new Memory(decoded.length);
         pvFindPara.pbData.write(0, decoded, 0, decoded.length);
         pvFindPara.cbData = decoded.length;
         CERT_CONTEXT.ByReference cert = Crypt32.INST.CertFindCertificateInStore(hMyStore, 1, 0, CERT_FIND_KEY_IDENTIFIER, pvFindPara, null);
-        pvFindPara=null;        
+        pvFindPara = null;
         return cert;
     }
 
     public static CERT_CONTEXT findCertByHash(String Sha1Hash) {
-        byte[] decoded = hexStringToByteArray(Sha1Hash);        
+        byte[] decoded = hexStringToByteArray(Sha1Hash);
         CRYPT_BIT_BLOB pvFindPara = new CRYPT_BIT_BLOB();
         pvFindPara.pbData = new Memory(decoded.length);
         pvFindPara.pbData.write(0, decoded, 0, decoded.length);
         pvFindPara.cbData = decoded.length;
         CERT_CONTEXT.ByReference cert = Crypt32.INST.CertFindCertificateInStore(hMyStore, 1, 0, CERT_FIND_HASH, pvFindPara, null);
-        pvFindPara=null;        
+        pvFindPara = null;
         return cert;
     }
-    public static CERT_CONTEXT findCertBySubject(String subject){
-        return findCertBySubject(subject,null);
-    } 
-    
-    public static CERT_CONTEXT findCertBySubject(String subject,CERT_CONTEXT prevCert) {
-        
-        CERT_CONTEXT.ByReference cert = Crypt32.INST.CertFindCertificateInStore(hMyStore, 1, 0, CERT_FIND_ANY|CERT_FIND_SUBJECT_STR_A, subject, prevCert);
-       // Crypt32.INST.CertCloseStore(hStore, 0);        
+
+    public static CERT_CONTEXT findCertBySubject(String subject) {
+        return findCertBySubject(subject, null);
+    }
+
+    public static CERT_CONTEXT findCertBySubject(String subject, CERT_CONTEXT prevCert) {
+
+        CERT_CONTEXT.ByReference cert = Crypt32.INST.CertFindCertificateInStore(hMyStore, 1, 0, CERT_FIND_ANY | CERT_FIND_SUBJECT_STR_A, subject, prevCert);
+        // Crypt32.INST.CertCloseStore(hStore, 0);        
         return cert;
     }
-    public static List<String> getCertList(){
-        CERT_CONTEXT.ByReference cert=null;
-        
+
+    public static boolean CertAddCertificateContextToStore(Pointer store, CERT_CONTEXT cert) {
+        boolean res = Crypt32.INST.CertAddCertificateContextToStore(store, cert, 6, null);
+        return res;
+    }
+
+    public static List<String> getCertList(Pointer store) {
+        CERT_CONTEXT.ByReference cert = null;
+
         List<String> certList = new ArrayList();
-        String nullStr=null;
-        do{
-            cert = Crypt32.INST.CertFindCertificateInStore(hMyStore, 1, 0, CERT_FIND_ANY, nullStr, cert);
-            if(cert!=null)certList.add(certToB64(cert));
-        }while(cert!=null);        
+        String nullStr = null;
+        do {
+            cert = Crypt32.INST.CertFindCertificateInStore(store, 1, 0, CERT_FIND_ANY, nullStr, cert);
+            if (cert != null) {
+                certList.add(certToB64(cert));
+            }
+        } while (cert != null);
         return certList;
     }
+
+    public static List<String> getCertList() {
+        return getCertList(hMyStore);
+    }
+
     public static String certToB64(CERT_CONTEXT cert) {
-       return Base64.encodeBase64String(certToBytes(cert));
+        return Base64.encodeBase64String(certToBytes(cert));
     }
 
     public static byte[] certToBytes(CERT_CONTEXT cert) {
@@ -138,12 +168,12 @@ public class CertUtils {
         return selectCert(null, null);
     }
 
-    public static CERT_CONTEXT selectCert(String title, String desc) throws SelectCertificateExceprion {        
-        WinDef.HWND hwnd = null;
+    public static CERT_CONTEXT selectCert(String title, String desc) throws SelectCertificateExceprion {
+        WinDef.HWND hwnd = User32.INST.GetForegroundWindow();
         CERT_CONTEXT.ByReference certCont = Cryptui.INST.CryptUIDlgSelectCertificateFromStore(hMyStore, hwnd, title, desc, 0, 0, null);
         if (certCont == null) {
             throw new SelectCertificateExceprion("Select Certificate UI failed.");
-        }        
+        }
         return certCont;
     }
 

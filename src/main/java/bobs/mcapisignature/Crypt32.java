@@ -43,7 +43,13 @@ public interface Crypt32 extends Library {
         public Pointer CertOpenSystemStoreA(
                 Pointer hCryptProv,
                 String psStoreName);
-
+        public Pointer CertOpenStore(
+               String  lpszStoreProvider,                            //                _In_       LPCSTR            lpszStoreProvider,
+               int dwMsgAndCertEncodingType,                           //                _In_       DWORD             dwMsgAndCertEncodingType,
+               Pointer   hCryptProv,                        //                _In_       HCRYPTPROV_LEGACY hCryptProv,
+               int dwFlags,                             //                _In_       DWORD             dwFlags,
+               Pointer  pvPara                            //                _In_ const void              *pvPara
+        );
         public boolean CertCloseStore(
                 Pointer hCertStore,
                 int dwFlags);
