@@ -143,18 +143,15 @@ public class CertUtils {
         List<String> chain = new ArrayList();
         CERT_CONTEXT pCurrentCert = cert;
         CERT_CONTEXT pIssuerCert = null;
-        while (pCurrentCert != null) {
+         do{
             chain.add(certToB64(pCurrentCert));
             pIssuerCert = IssuerCertificate(pCurrentCert);
 
             pCurrentCert = pIssuerCert;
             //if(pIssuerCert !=null)
             // Crypt32.INST.CertFreeCertificateContext(pIssuerCert);
-        }
-        if (pCurrentCert != null && pCurrentCert != cert) {
-            chain.add(certToB64(pCurrentCert));
-            Crypt32.INST.CertFreeCertificateContext(pCurrentCert);
-        }
+        }while (pCurrentCert != null);
+
         return chain;
     }
 
@@ -186,7 +183,12 @@ public class CertUtils {
             e.printStackTrace();
         }
     }
+ public static X509Certificate getX509CertificateFromB64(String certBase64) throws CertificateException {
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        X509Certificate cert = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(Base64.decodeBase64(certBase64)));
 
+        return cert;
+    }
     public static X509Certificate getX509Certificate(CERT_CONTEXT pcert) throws CertificateException {
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
         X509Certificate cert = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certToBytes(pcert)));

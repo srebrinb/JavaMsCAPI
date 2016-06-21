@@ -89,15 +89,16 @@ public class UtilsTest {
     }
 
     @Test
-    public void testGetChain() {
+    public void testGetChain() throws SelectCertificateExceprion, CertificateException {
         System.out.println("GetChain");
-        Structures.CERT_CONTEXT cert = CertUtils.findCertByHash(testCertHash);
+        Structures.CERT_CONTEXT cert = CertUtils.selectCert();// .findCertByHash(testCertHash);
         List<String> chain = CertUtils.getChain(cert);
         System.out.println(chain.size());
         int i = 0;
         for (String certCA : chain) {
             i++;
             dump(certCA.getBytes(), "src/test/resources/" + i + ".cer");
+            System.out.println(CertUtils.getX509CertificateFromB64(certCA).getSubjectDN().getName());
         }
     }
 
@@ -171,11 +172,13 @@ public class UtilsTest {
            System.out.println("CertAddCertificateContextToStore:"+Integer.toHexString(Native.getLastError()));
            throw new SelectCertificateExceprion("CertAddCertificateContextToStore:"+Integer.toHexString(Native.getLastError()));
        }
+       Crypt32.INST.CertFreeCertificateContext(cert);
        cert = CertUtils.findCertBySubject("Srebrin");
        if(!CertUtils.CertAddCertificateContextToStore(store, cert)){
            System.out.println("CertAddCertificateContextToStore:"+Integer.toHexString(Native.getLastError()));
            throw new SelectCertificateExceprion("CertAddCertificateContextToStore:"+Integer.toHexString(Native.getLastError()));
        }
+       Crypt32.INST.CertFreeCertificateContext(cert);
        WinDef.HWND hwnd = User32.INST.GetForegroundWindow();
        Structures.CERT_CONTEXT.ByReference certCont = Cryptui.INST.CryptUIDlgSelectCertificateFromStore(store, hwnd, null, null, 0, 0, null);
        System.out.println("getCertList:"+Integer.toHexString(Native.getLastError()));
